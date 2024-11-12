@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>3D Solution Network Visualization</title>
+    <style>
+        body { 
+            margin: 0;
+            background-color: #000;
+        }
+        #graph-container { 
+            width: 100vw;
+            height: 100vh;
+        }
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 8px;
+            color: white;
+            display: none;
+            max-width: 300px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="graph-container"></div>
+    <div id="info-panel" class="info-panel"></div>
+
+    <script src="https://unpkg.com/three@0.137.5/build/three.min.js"></script>
+    <script src="https://unpkg.com/three-spritetext@1.6.5/dist/three-spritetext.min.js"></script>
+    <script src="https://unpkg.com/3d-force-graph@1.70.5/dist/3d-force-graph.min.js"></script>
+    <script>
+        const solutionData = [
+            { id: 1, name: "モバイルアプリ", category: "アプリ開発", user: ["一般ユーザー", "ビジネスユーザー"] },
+            { id: 2, name: "クラウドストレージ", category: "クラウド", user: ["ビジネスユーザー", "開発者"] },
+            { id: 3, name: "音声認識API", category: "API", user: ["開発者", "企業"] },
+            { id: 4, name: "データ分析ツール", category: "分析", user: ["データアナリスト"] },
+            { id: 5, name: "ユーザー管理システム", category: "システム", user: ["管理者", "一般ユーザー"] },
+            { id: 6, name: "メッセージング機能", category: "コミュニケーション", user: ["一般ユーザー"] },
+            { id: 7, name: "決済システム", category: "フィンテック", user: ["ユーザー", "店舗"] },
+            { id: 8, name: "セキュリティツール", category: "セキュリティ", user: ["システム管理者"] },
+            { id: 9, name: "ワークフロー管理", category: "システム", user: ["ビジネスユーザー"] },
+            { id: 10, name: "AI予測モデル", category: "AI", user: ["データサイエンティスト"] },
+            { id: 11, name: "検索エンジン", category: "検索", user: ["一般ユーザー"] },
+            { id: 12, name: "監視ダッシュボード", category: "モニタリング", user: ["運用担当", "管理者"] },
+            { id: 13, name: "バックアップシステム", category: "インフラ", user: ["システム管理者"] },
+            { id: 14, name: "レポート生成機能", category: "レポーティング", user: ["ビジネスユーザー"] },
+            { id: 15, name: "VR会議システム", category: "コミュニケーション", user: ["リモートワーカー"] },
+            { id: 16, name: "自動デプロイ", category: "DevOps", user: ["開発者"] },
+            { id: 17, name: "チャットボット", category: "AI", user: ["カスタマーサポート"] },
+            { id: 18, name: "データ可視化", category: "分析", user: ["アナリスト", "経営者"] }
+        ];
+
+        const categoryColors = {
+            "アプリ開発": "#4CAF50",
+            "クラウド": "#2196F3",
+            "API": "#9C27B0",
+            "分析": "#FFC107",
+            "システム": "#FF5722",
+            "コミュニケーション": "#E91E63",
+            "セキュリティ": "#00BCD4",
+            "フィンテック": "#F44336",
+            "AI": "#3F51B5",
+            "検索": "#009688",
+            "モニタリング": "#795548",
+            "インフラ": "#607D8B",
+            "レポーティング": "#9E9E9E",
+            "DevOps": "#FF9800"
+        };
+
+        const graphData = {
+            nodes: solutionData.map(item => ({
+                id: item.id,
+                name: item.name,
+                category: item.category,
+                color: categoryColors[item.category],
+                user: item.user,
+                val: 20
+            })),
+            links: []
+        };
+
+        solutionData.forEach((item1, i) => {
+            solutionData.slice(i + 1).forEach(item2 => {
+                const commonUsers = item1.user.filter(u => 
+                    item2.user.some(u2 => u2.includes(u))
+                ).length;
+                
+                if (commonUsers > 0) {
+                    graphData.links.push({
+                        source: item1.id,
+                        target: item2.id,
+                        value: commonUsers
+                    });
+                }
+            });
+        });
+
+        const Graph = ForceGraph3D()
+            (document.getElementById('graph-container'))
+            .graphData(graphData)
+            .backgroundColor('#000')
+            .nodeColor(node => node.color)
+            .nodeLabel(node => `${node.name} (${node.category})`)
+            .nodeResolution(16)
+            .nodeOpacity(0.9)
+            .linkWidth(1)
+            .linkOpacity(0.3)
+            .nodeThreeObject(node => {
+                const group = new THREE.Group();
+
+                // メインの球体
+                const geometry = new THREE.SphereGeometry(node.val / 2, 32, 32);
+                const material = new THREE.MeshPhongMaterial({ 
+                    color: node.color,
+                    transparent: true,
+                    opacity: 0.8,
+                    shininess: 100
+                });
+                const sphere = new THREE.Mesh(geometry, material);
+                group.add(sphere);
+
+                // テキストラベル
+                const label = new SpriteText(node.name);
+                label.color = 'white';
+                label.backgroundColor = node.color;
+                label.padding = 2;
+                label.textHeight = 8;
+                label.position.y = node.val / 2 + 5;
+                group.add(label);
+
+                // カテゴリーラベル
+                const categoryLabel = new SpriteText(node.category);
+                categoryLabel.color = 'white';
+                categoryLabel.backgroundColor = 'rgba(0,0,0,0.7)';
+                categoryLabel.padding = 2;
+                categoryLabel.textHeight = 6;
+                categoryLabel.position.y = -(node.val / 2 + 5);
+                group.add(categoryLabel);
+
+                return group;
+            })
+            .onNodeClick(handleNodeClick);
+
+        // ライトの追加
+        const light = new THREE.DirectionalLight(0xffffff, 1);
+        light.position.set(100, 100, 100);
+        Graph.scene().add(light);
+
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        Graph.scene().add(ambientLight);
+
+        // ノードクリックのハンドラー
+        function handleNodeClick(node) {
+            const panel = document.getElementById('info-panel');
+            panel.style.display = 'block';
+            panel.innerHTML = `
+                <h3 style="color: ${node.color}; margin-top: 0;">${node.name}</h3>
+                <p><strong>カテゴリー:</strong> ${node.category}</p>
+                <p><strong>ユーザー:</strong> ${node.user.join(', ')}</p>
+                <button onclick="hideInfoPanel()" 
+                    style="position: absolute; top: 10px; right: 10px; 
+                    background: none; border: none; color: white; cursor: pointer;">✕</button>
+            `;
+        }
+
+        function hideInfoPanel() {
+            document.getElementById('info-panel').style.display = 'none';
+        }
+
+        // ズーム機能
+        document.getElementById('graph-container').addEventListener('wheel', event => {
+            event.preventDefault();
+            
+            const delta = event.deltaY;
+            const distance = Graph.cameraPosition().z;
+            const newDistance = distance * (1 + (delta > 0 ? 0.1 : -0.1));
+            
+            Graph.cameraPosition(
+                { 
+                    x: Graph.cameraPosition().x,
+                    y: Graph.cameraPosition().y,
+                    z: newDistance 
+                },
+                { x: 0, y: 0, z: 0 },
+                800
+            );
+        }, { passive: false });
+
+        // 初期カメラ位置の設定
+        Graph.cameraPosition({ x: 200, y: 200, z: 600 });
+
+        // フォースの調整
+        Graph.d3Force('charge').strength(-400);
+        Graph.d3Force('link').distance(100);
+    </script>
+</body>
+</html>
